@@ -1,0 +1,64 @@
+{
+  admin off
+  acme_ca https://acme.zerossl.com/v2/DV90
+  email cdrc+zerossl@skwar.me
+}
+
+nc.5y5.one:443 {
+  log {
+    level INFO
+    output file {$LOG_FILE} {
+      roll_size 10MB
+      roll_keep 10
+    }
+  }
+
+  # Use the ACME HTTP-01 challenge to get a cert for the configured domain.
+  tls {$EMAIL}
+
+  # This setting may have compatibility issues with some browsers
+  # (e.g., attachment downloading on Firefox). Try disabling this
+  # if you encounter issues.
+  encode gzip
+
+  # Proxy everything else to Nextcloud
+  reverse_proxy nextcloud:80 {
+       # Send the true remote IP to nginx
+       header_up X-Real-IP {remote_host}
+  }
+
+  header {
+    # enable HSTS
+    Strict-Transport-Security max-age=31536000;
+  }
+}
+
+xc.5y5.one:443 {
+  log {
+    level INFO
+    output file {$LOG_FILE} {
+      roll_size 10MB
+      roll_keep 10
+    }
+  }
+
+  # Use the ACME HTTP-01 challenge to get a cert for the configured domain.
+  tls {$EMAIL}
+
+  # This setting may have compatibility issues with some browsers
+  # (e.g., attachment downloading on Firefox). Try disabling this
+  # if you encounter issues.
+  encode gzip
+
+  # Proxy everything else to Nextcloud
+  reverse_proxy nc22:80 {
+       # Send the true remote IP to nginx
+       header_up X-Real-IP {remote_host}
+  }
+
+  header {
+    # enable HSTS
+    Strict-Transport-Security max-age=31536000;
+  }
+}
+

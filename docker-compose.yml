@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  caddy:
+    image: caddy:2.4.6-alpine
+    container_name: caddy
+    restart: always
+    ports:
+      - 80:80  # Needed for the ACME HTTP-01 challenge.
+      - 443:443
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy-config:/config
+      - ./caddy-data:/data
+    environment:
+     - EMAIL=${CADDY_CERT_EMAIL}
+     - LOG_FILE=/data/access.log
+
+  db:
+    image: mariadb:10.6
+    container_name: db
+    restart: always
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW --innodb-file-per-table=1 --skip-innodb-read-only-compressed
+    volumes:
+      - db:/var/lib/mysql
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASS}
+      - MYSQL_PASSWORD=${MYSQL_PASS}
+      - MYSQL_USER=${MYSQL_USR}
+      - MYSQL_DATABASE=${MYSQL_DB}
+
+  app22:
+    container_name: nc22
+    image: nextcloud:22
+    restart: always
+    #ports:
+    #  - 8022:80
+    links:
+      - db
+    volumes:
+      - nc22:/var/www/html
+    environment:
+      - MYSQL_PASSWORD=${MYSQL_PASS}
+      - MYSQL_DATABASE=${NC22_MYSQL_DB}
+      - MYSQL_USER=${MYSQL_USR}
+      - MYSQL_HOST=db
+      - OBJECTSTORE_S3_HOST=${NC22_OBJECTSTORE_S3_HOST}
+      - OBJECTSTORE_S3_BUCKET=${NC22_OBJECTSTORE_S3_BUCKET}
+      - OBJECTSTORE_S3_SECRET=${NC22_OBJECTSTORE_S3_SECRET}
+      - OBJECTSTORE_S3_KEY=${NC22_OBJECTSTORE_S3_KEY}
+      - OBJECTSTORE_S3_REGION=${NC22_OBJECTSTORE_S3_REGION}
+      - OBJECTSTORE_S3_SSL=true
+  
+  app23:
+    container_name: nextcloud
+    image: nextcloud:23
+    restart: always
+    #ports:
+    #  - 8080:80
+    links:
+      - db
+    volumes:
+      - nextcloud:/var/www/html
+    environment:
+      - MYSQL_PASSWORD=${MYSQL_PASS}
+      - MYSQL_DATABASE=${NC23_MYSQL_DB}
+      - MYSQL_USER=${MYSQL_USR}
+      - MYSQL_HOST=db
+      - OBJECTSTORE_S3_HOST=${NC23_OBJECTSTORE_S3_HOST}
+      - OBJECTSTORE_S3_BUCKET=${NC23_OBJECTSTORE_S3_BUCKET}
+      - OBJECTSTORE_S3_SECRET=${NC23_OBJECTSTORE_S3_SECRET}
+      - OBJECTSTORE_S3_KEY=${NC23_OBJECTSTORE_S3_KEY}
+      - OBJECTSTORE_S3_REGION=${NC23_OBJECTSTORE_S3_REGION}
+      - OBJECTSTORE_S3_SSL=true
+
+volumes:
+  nc22:
+  nextcloud:
+  db:
